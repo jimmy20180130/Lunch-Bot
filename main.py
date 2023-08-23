@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 import os
 from discord_webhook import DiscordWebhook, DiscordEmbed
+import asyncio
 
 with open("settings.json", "r", encoding='utf-8') as settings:
     setting = json.load(settings)
@@ -22,6 +23,7 @@ bot = commands.Bot(command_prefix=setting['prefix'], intents=intents, help_comma
 @bot.event
 async def on_ready():
     print(f'機器人已上線({bot.user})')
+    await start_timer()
 
 @bot.command()
 @commands.is_owner()
@@ -277,9 +279,12 @@ def process_orders(orders):
                 webhook.add_embed(embed)
                 response = webhook.execute()
 
-now_data = load_sheet()
-if now_data != ([] or 'no data'):
-    process_orders(now_data)
+async def start_timer():
+    while True:
+        await asyncio.sleep(600)  # 等待 600 秒（10 分鐘）
+        now_data = load_sheet()
+        if now_data != ([] or 'no data'):
+            process_orders(now_data)
 
 if __name__ == "__main__":
     bot.run('MTE0MzU0ODA5NjczNTg3OTI5OQ.G-bu59.2-JypjPXLv6ubR4ldLJupEHC4a241HZSRe5sto')
