@@ -3,7 +3,6 @@ import json
 import discord
 from discord.ext import commands
 import os
-import aiohttp
 from discord_webhook import DiscordWebhook, DiscordEmbed
 
 with open("settings.json", "r", encoding='utf-8') as settings:
@@ -25,38 +24,44 @@ async def on_ready():
     print(f'機器人已上線({bot.user})')
 
 @bot.command()
+@commands.is_owner()
 async def load_sheet(ctx):
+    await ctx.send('已開始讀取最新資料')
     process_orders(load_sheet())
-    await ctx.send('已載入資料')
+    await ctx.send('已完成讀取資料')
 
 @bot.command()
+@commands.is_owner()
 async def set_money(ctx, user :int, money :int):
     user_id = str(user)
     if user_id in user_data:
         user_data[user_id]['wallet'] = money
         with open('user.json', 'w') as user_file:
             json.dump(user_data, user_file, indent=4)
-        await ctx.send(f"User {user_id} wallet set to {money}")
+        await ctx.send(f"{user_id}號的錢包已設為了{money}元\n目前有{user_data[user_id]['wallet']}元")
 
 @bot.command()
+@commands.is_owner()
 async def add_money(ctx, user :int, money :int):
     user_id = str(user)
     if user_id in user_data:
         user_data[user_id]['wallet'] += money
         with open('user.json', 'w') as user_file:
             json.dump(user_data, user_file, indent=4)
-        await ctx.send(f"User {user_id} wallet set to {money}")
+        await ctx.send(f"{user_id}號的錢包新增了{money}元\n目前有{user_data[user_id]['wallet']}元")
 
 @bot.command()
+@commands.is_owner()
 async def remove_money(ctx, user :int, money :int):
     user_id = str(user)
     if user_id in user_data:
         user_data[user_id]['wallet'] -= money
         with open('user.json', 'w') as user_file:
             json.dump(user_data, user_file, indent=4)
-        await ctx.send(f"User {user_id} wallet set to {money}")
+        await ctx.send(f"{user_id}號的錢包移除了{money}元\n目前有{user_data[user_id]['wallet']}元")
 
 @bot.command()
+@commands.is_owner()
 async def add_flavor(ctx, flavor :str, price :int):
     lunch_data[str(len(lunch_data) + 1)] = {
         'name': flavor,
@@ -64,9 +69,10 @@ async def add_flavor(ctx, flavor :str, price :int):
     }
     with open('lunch.json', 'w') as lunch_file:
         json.dump(lunch_data, lunch_file, indent=4)
-    await ctx.send(f"Added flavor: {flavor}")
+    await ctx.send(f"已新增項目: {flavor}\n價錢為{price}元")
 
 @bot.command()
+@commands.is_owner()
 async def remove_flavor(ctx, flavor :str):
     for key, value in lunch_data.items():
         if value['name'] == flavor:
@@ -75,9 +81,10 @@ async def remove_flavor(ctx, flavor :str):
                 json.dump(lunch_data, lunch_file, indent=4)
             await ctx.send(f"Removed flavor: {flavor}")
             return
-    await ctx.send(f"Flavor not found: {flavor}")
+    await ctx.send(f"無法找到項目: {flavor}")
 
 @bot.command()
+@commands.is_owner()
 async def set_flavor(ctx, flavor: str, price: int):
     for key, value in lunch_data.items():
         if value['name'] == flavor:
@@ -86,9 +93,32 @@ async def set_flavor(ctx, flavor: str, price: int):
                 json.dump(lunch_data, lunch_file, indent=4)
             await ctx.send(f"Set price for flavor {flavor} to {price}")
             return
-    await ctx.send(f"Flavor not found: {flavor}")
+    await ctx.send(f"無法找到項目: {flavor}")
 
+@bot.command()
+@commands.is_owner()
+async def clear_lunch(ctx, user_id :int):
+    user_data[str(user_id)]['lunch'] = ''
+    with open('user.json', 'w', encoding='utf-8') as user_file:
+        json.dump(user_data, user_file, ensure_ascii=False, indent=4)
+    await ctx.send(f'已將{user_id}的午餐清空')
 
+@bot.command()
+@commands.is_owner()
+async def clear_all_lunch(ctx):
+    for user in user_data:
+        user_data[user]['lunch'] = ''
+    with open('user.json', 'w', encoding='utf-8') as user_file:
+        json.dump(user_data, user_file, ensure_ascii=False, indent=4)
+    await ctx.send(f'已將所有人的午餐清空')
+
+@bot.command()
+@commands.is_owner()
+async def add_discord(ctx, user_id :int, discord_id :int):
+    user_data[str(user_id)]['discord_id'] = discord_id
+    with open('user.json', 'w', encoding='utf-8') as user_file:
+        json.dump(user_data, user_file, ensure_ascii=False, indent=4)
+    await ctx.send(f'{user_id}號的帳號已與<@{discord_id}>連結')
 
 def load_sheet():
     # 認證+讀取google sheet
@@ -113,23 +143,23 @@ def load_sheet():
         # 将 previous_data 字符串转换为列表
         previous_data = setting['previous_data']
 
-        # 将数据转换为集合以进行比较
+        # 比較
         data_set = {tuple(data) for data in data_range}
         previous_data_set = {tuple(data) for data in previous_data}
         print(data_set, previous_data_set)
 
-        # 找到新数据和之前数据的差异
+        # 找到新增的資料
         different_data = data_set.difference(previous_data_set)
         print(different_data)
 
-        # 将不同的数据转换为列表
+        # 轉成列表
         different_data_list = [list(data) for data in different_data]
         print(different_data_list)
 
         # 更新 setting 中的 previous_data
         setting['previous_data'] = [list(data) for data in data_set]
 
-        # 将更新后的数据写回 settings.json 文件
+        # 寫回settings.json
         with open('settings.json', 'w', encoding='utf-8') as settings_file:
             json.dump(setting, settings_file, ensure_ascii=False, indent=4)
 
@@ -185,14 +215,14 @@ def process_orders(orders):
                             user_data[user_id]["lunch"] = lunch_id
                             user_data[user_id]["wallet"] = int(user_data[user_id]["wallet"]) - int(lunch_data[lunch_id]["price"])
                             save_user_data()
-                            embed = DiscordEmbed(title="新增訂單提醒", color="03b2f8")
+                            embed = DiscordEmbed(title="新增午餐", color="03b2f8")
                             if user_data[user_id]['discord_id'] != '':
                                 embed.add_embed_field(name="用戶", value=f'<@{member_id}>', inline=False)
                             else:
                                 embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
-                            embed.add_embed_field(name="訂單", value=lunch_data[lunch_id]["name"], inline=False)
-                            embed.add_embed_field(name="花費", value=lunch_data[lunch_id]["price"], inline=False)
-                            embed.add_embed_field(name="餘額", value=user_data[user_id]["wallet"], inline=False)
+                            embed.add_embed_field(name="午餐", value=lunch_data[lunch_id]["name"], inline=False)
+                            embed.add_embed_field(name="花費", value=f'{lunch_data[lunch_id]["price"]}元', inline=False)
+                            embed.add_embed_field(name="餘額", value=f'{user_data[user_id]["wallet"]}元', inline=False)
                             # add embed object to webhook
                             webhook.add_embed(embed)
                             response = webhook.execute()
@@ -201,32 +231,51 @@ def process_orders(orders):
                             user_data[user_id]["wallet"] = int(user_data[user_id]["wallet"]) - int(lunch_data[lunch_id]["price"])
                             save_user_data()
                             previous_lunch_id = lunch_return
-                            # 創建 Embed 訊息
-                            embed = DiscordEmbed(title="更改訂單提醒", color="03b2f8")
+                            # create embed
+                            embed = DiscordEmbed(title="更改午餐", color="03b2f8")
                             if user_data[user_id]['discord_id'] != '':
                                 embed.add_embed_field(name="用戶", value=f'<@{member_id}>', inline=False)
                             else:
                                 embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
-                            embed.add_embed_field(name="訂單", value=lunch_data[previous_lunch_id]["name"] + '->' + lunch_data[lunch_id]["name"], inline=False)
-                            embed.add_embed_field(name="花費", value=lunch_data[lunch_id]["price"], inline=False)
-                            embed.add_embed_field(name="餘額", value=user_data[user_id]["wallet"], inline=False)
+                            embed.add_embed_field(name="午餐", value=lunch_data[previous_lunch_id]["name"] + '->' + lunch_data[lunch_id]["name"], inline=False)
+                            embed.add_embed_field(name="花費", value=f'{lunch_data[lunch_id]["price"]}元', inline=False)
+                            embed.add_embed_field(name="餘額", value=f'{user_data[user_id]["wallet"]}元', inline=False)
                             # add embed object to webhook
                             webhook.add_embed(embed)
                             response = webhook.execute()
                     else:
-                        print(f"Not enough funds for user {user_id}")
+                        print(f"{user_id}無足夠的餘額")
+                        embed = DiscordEmbed(title="無足夠餘額", color="03b2f8")
+                        if user_data[user_id]['discord_id'] != '':
+                            embed.add_embed_field(name="用戶", value=f'<@{member_id}>', inline=False)
+                        else:
+                            embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
+                        embed.add_embed_field(name="午餐", value=lunch_data[lunch_id]["name"], inline=False)
+                        # add embed object to webhook
+                        webhook.add_embed(embed)
+                        response = webhook.execute()
                 else:
-                    print(f"Invalid lunch ID for user {user_id}")
+                    print(f"{user_id}無效的午餐ID")
+                    embed = DiscordEmbed(title="無效的午餐ID", color="03b2f8")
+                    if user_data[user_id]['discord_id'] != '':
+                        embed.add_embed_field(name="用戶", value=f'<@{member_id}>', inline=False)
+                    else:
+                        embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
+                    embed.add_embed_field(name="午餐", value=lunch_id, inline=False)
+                    # add embed object to webhook
+                    webhook.add_embed(embed)
+                    response = webhook.execute()
             else:
-                print(f"User {user_id} already ordered this lunch")
-        else:
-            if lunch_id in lunch_data:
-                if int(user_data[lunch_id]["wallet"]) >= int(lunch_data[lunch_id]["price"]):
-                    add_order(user_id, lunch_id)
+                print(f"{user_id}已點過此品項")
+                embed = DiscordEmbed(title="已點過品項", color="03b2f8")
+                if user_data[user_id]['discord_id'] != '':
+                    embed.add_embed_field(name="用戶", value=f'<@{member_id}>', inline=False)
                 else:
-                    print(f"Not enough funds for user {user_id}")
-            else:
-                print(f"Invalid lunch ID for user {user_id}")
+                    embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
+                embed.add_embed_field(name="午餐", value=lunch_data[lunch_id]["name"], inline=False)
+                # add embed object to webhook
+                webhook.add_embed(embed)
+                response = webhook.execute()
 
 now_data = load_sheet()
 if now_data != ([] or 'no data'):
