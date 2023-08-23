@@ -98,6 +98,13 @@ async def remove_flavor(ctx, flavor :str):
             with open('lunch.json', 'w') as lunch_file:
                 json.dump(lunch_data, lunch_file, indent=4)
             await ctx.send(f"Removed flavor: {flavor}")
+            # 取得lunch.json的資料
+            with open("lunch.json", "r", encoding='utf-8') as lunch_file:
+                lunch_data = json.load(lunch_file)
+
+            # 取得user.json的資料
+            with open("user.json", "r") as user_file:
+                user_data = json.load(user_file)
             return
     await ctx.send(f"無法找到項目: {flavor}")
 
@@ -110,6 +117,13 @@ async def set_flavor(ctx, flavor: str, price: int):
             with open('lunch.json', 'w') as lunch_file:
                 json.dump(lunch_data, lunch_file, indent=4)
             await ctx.send(f"Set price for flavor {flavor} to {price}")
+            # 取得lunch.json的資料
+            with open("lunch.json", "r", encoding='utf-8') as lunch_file:
+                lunch_data = json.load(lunch_file)
+
+            # 取得user.json的資料
+            with open("user.json", "r") as user_file:
+                user_data = json.load(user_file)
             return
     await ctx.send(f"無法找到項目: {flavor}")
 
@@ -137,10 +151,24 @@ async def add_discord(ctx, user_id :int, discord_id :int):
     with open('user.json', 'w', encoding='utf-8') as user_file:
         json.dump(user_data, user_file, ensure_ascii=False, indent=4)
     await ctx.send(f'{user_id}號的帳號已與<@{discord_id}>連結')
+    # 取得lunch.json的資料
+    with open("lunch.json", "r", encoding='utf-8') as lunch_file:
+        lunch_data = json.load(lunch_file)
+
+    # 取得user.json的資料
+    with open("user.json", "r") as user_file:
+        user_data = json.load(user_file)
 
 @bot.command()
 @commands.is_owner()
 async def count_lunch(ctx):
+    # 取得lunch.json的資料
+    with open("lunch.json", "r", encoding='utf-8') as lunch_file:
+        lunch_data = json.load(lunch_file)
+
+    # 取得user.json的資料
+    with open("user.json", "r") as user_file:
+        user_data = json.load(user_file)
     webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1143563857797849260/xCaTsRsc7SGOv1PejwjD-yZDSqMQnKBzGOQ_hKrndZl05J396h53nf6ooSAJNSvuir_G")
     embed = DiscordEmbed(title="午餐統計", color=0x03b2f8)
     for count, lunch_name in count_lunch_items():
