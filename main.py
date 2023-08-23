@@ -351,5 +351,5 @@ async def start_timer():
         await asyncio.sleep(600)  # 等待 600 秒（10 分鐘）
 
 if __name__ == "__main__":
-    bot.run('your token')
+    bot.run(setting['bot_token'])
     start_scheduler()
