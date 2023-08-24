@@ -169,13 +169,14 @@ async def count_lunch(ctx):
     # 取得user.json的資料
     with open("user.json", "r") as user_file:
         user_data = json.load(user_file)
-    webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1143563857797849260/xCaTsRsc7SGOv1PejwjD-yZDSqMQnKBzGOQ_hKrndZl05J396h53nf6ooSAJNSvuir_G")
+    webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1143563857797849260/xCaTsRsc7SGOv1PejwjD-yZDSqMQnKBzGOQ_hKrndZl05J396h53nf6ooSAJNSvuir_G", username="我要吃午餐")
     embed = DiscordEmbed(title="午餐統計", color=0x03b2f8)
     for count, lunch_name in count_lunch_items():
         embed.add_embed_field(name=lunch_name, value=str(count), inline=False)
     # add embed object to webhook
     webhook.add_embed(embed)
     response = webhook.execute()
+    await ctx.send('已統計完成')
 
 def load_sheet():
     # 認證+讀取google sheet
@@ -259,7 +260,7 @@ def update_order(user_id, lunch_id):
 
 def process_orders(orders):
     for order in orders:
-        webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1143563857797849260/xCaTsRsc7SGOv1PejwjD-yZDSqMQnKBzGOQ_hKrndZl05J396h53nf6ooSAJNSvuir_G")
+        webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1143563857797849260/xCaTsRsc7SGOv1PejwjD-yZDSqMQnKBzGOQ_hKrndZl05J396h53nf6ooSAJNSvuir_G", username="我要吃午餐")
         user_id = order[1]
         member_id = user_data[user_id]['discord_id']
         lunch_id = get_lunch_id(order[2])
