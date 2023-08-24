@@ -178,6 +178,41 @@ async def count_lunch(ctx):
     response = webhook.execute()
     await ctx.send('已統計完成')
 
+@bot.command()
+async def load_info(ctx, user_id: int):
+    user_id_str = str(user_id)
+    if user_id_str in user_data:
+        lunch_id = user_data[user_id_str]['lunch']
+        if lunch_id in lunch_data:
+            lunch_name = lunch_data[lunch_id]['name']
+            wallet = user_data[user_id_str]['wallet']
+            
+            embed = discord.Embed(title=f"用戶 {user_id} 的信息", color=0x03b2f8)
+            embed.add_field(name="午餐", value=lunch_name, inline=False)
+            embed.add_field(name="餘額", value=f"{wallet} 元", inline=False)
+            
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send(f"用戶 {user_id} 未點餐")
+    else:
+        await ctx.send(f"找不到用戶 {user_id}")
+
+@bot.command()
+async def load_all_info(ctx):
+    info_list = []
+    for user_id, data in user_data.items():
+        if 'lunch' in data and data['lunch'] in lunch_data:
+            lunch_name = lunch_data[data['lunch']]['name']
+            wallet = data['wallet']
+            info_list.append(f"用戶 {user_id} 的午餐：{lunch_name}，餘額：{wallet} 元")
+    
+    if info_list:
+        embed = discord.Embed(title="所有用戶的信息", color=0x03b2f8)
+        embed.description = "\n".join(info_list)
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send("目前沒有用戶點餐信息")
+
 def load_sheet():
     # 認證+讀取google sheet
     gc = pygsheets.authorize(service_file='credentials.json')
@@ -310,6 +345,7 @@ def process_orders(orders):
                         else:
                             embed.add_embed_field(name="用戶", value=f'{user_id}', inline=False)
                         embed.add_embed_field(name="午餐", value=lunch_data[lunch_id]["name"], inline=False)
+                        embed.add_embed_field(name="不足", value=f'{int(lunch_data[lunch_id]["price"])-int(user_data[user_id]["wallet"])}元', inline=False)
                         # add embed object to webhook
                         webhook.add_embed(embed)
                         response = webhook.execute()
