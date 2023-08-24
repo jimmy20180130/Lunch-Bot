@@ -284,10 +284,11 @@ def process_orders(orders):
                             webhook.add_embed(embed)
                             response = webhook.execute()
                         else:
+                            previous_lunch_id = lunch_return
+                            user_data[user_id]["wallet"] = int(user_data[user_id]["wallet"]) + int(lunch_data[previous_lunch_id]["price"])
                             user_data[user_id]["lunch"] = lunch_id
                             user_data[user_id]["wallet"] = int(user_data[user_id]["wallet"]) - int(lunch_data[lunch_id]["price"])
                             save_user_data()
-                            previous_lunch_id = lunch_return
                             # create embed
                             embed = DiscordEmbed(title="更改午餐", color="03b2f8")
                             if user_data[user_id]['discord_id'] != '':
