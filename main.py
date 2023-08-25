@@ -6,7 +6,7 @@ import os
 from discord_webhook import DiscordWebhook, DiscordEmbed
 import asyncio
 import time
-import schedule
+from apscheduler.schedulers.background import BackgroundScheduler
 
 with open("settings.json", "r", encoding='utf-8') as settings:
     setting = json.load(settings)
@@ -162,13 +162,6 @@ async def add_discord(ctx, user_id :int, discord_id :int):
 @bot.command()
 @commands.is_owner()
 async def count_lunch(ctx):
-    # 取得lunch.json的資料
-    with open("lunch.json", "r", encoding='utf-8') as lunch_file:
-        lunch_data = json.load(lunch_file)
-
-    # 取得user.json的資料
-    with open("user.json", "r") as user_file:
-        user_data = json.load(user_file)
     webhook = DiscordWebhook(url=setting['webhook_link'], username=setting['webhook_name'])
     embed = DiscordEmbed(title="午餐統計", color=0x03b2f8)
     for count, lunch_name in count_lunch_items():
@@ -176,14 +169,15 @@ async def count_lunch(ctx):
     # add embed object to webhook
     webhook.add_embed(embed)
     response = webhook.execute()
-    await ctx.send('已統計完成')
+    await ctx.send("已統計完成")
 
 @bot.command()
 @commands.is_owner()
-async def form_link(ctx, link):
+async def edit_form_link(ctx, link):
     setting['form_link'] = link
     with open('settings.json', 'w', encoding='utf-8') as settings:
         json.dump(setting, settings, ensure_ascii=False, indent=4)
+    await ctx.send(f'已成功將表單連結更新為{link}')
 
 @bot.command()
 async def load_info(ctx, user_id: int):
@@ -193,10 +187,12 @@ async def load_info(ctx, user_id: int):
         if lunch_id in lunch_data:
             lunch_name = lunch_data[lunch_id]['name']
             wallet = user_data[user_id_str]['wallet']
+            order_time = user_data[user_id_str].get('order_time', 'Not available')  # Get order time or set default
             
             embed = discord.Embed(title=f"用戶 {user_id} 的信息", color=0x03b2f8)
             embed.add_field(name="午餐", value=lunch_name, inline=False)
             embed.add_field(name="餘額", value=f"{wallet} 元", inline=False)
+            embed.add_field(name="訂餐時間", value=order_time, inline=False)
             
             await ctx.send(embed=embed)
         else:
@@ -250,15 +246,12 @@ def load_sheet():
         # 比較
         data_set = {tuple(data) for data in data_range}
         previous_data_set = {tuple(data) for data in previous_data}
-        print(data_set, previous_data_set)
 
         # 找到新增的資料
         different_data = data_set.difference(previous_data_set)
-        print(different_data)
 
         # 轉成列表
         different_data_list = [list(data) for data in different_data]
-        print(different_data_list)
 
         # 更新 setting 中的 previous_data
         setting['previous_data'] = [list(data) for data in data_set]
@@ -305,11 +298,14 @@ def update_order(user_id, lunch_id):
         return 'a'
 
 def process_orders(orders):
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S")
     for order in orders:
         webhook = DiscordWebhook(url=setting['webhook_link'], username=setting['webhook_name'])
         user_id = order[1]
         member_id = user_data[user_id]['discord_id']
         lunch_id = get_lunch_id(order[2])
+        user_data[user_id]["order_time"] = current_time  # Add order time
+        save_user_data()
         if user_id in user_data:
             if user_data[user_id]["lunch"] != lunch_id:
                 if lunch_id in lunch_data:
@@ -327,6 +323,7 @@ def process_orders(orders):
                             embed.add_embed_field(name="午餐", value=lunch_data[lunch_id]["name"], inline=False)
                             embed.add_embed_field(name="花費", value=f'{lunch_data[lunch_id]["price"]}元', inline=False)
                             embed.add_embed_field(name="餘額", value=f'{user_data[user_id]["wallet"]}元', inline=False)
+                            embed.add_embed_field(name="時間", value=current_time, inline=False)
                             # add embed object to webhook
                             webhook.add_embed(embed)
                             response = webhook.execute()
@@ -345,6 +342,7 @@ def process_orders(orders):
                             embed.add_embed_field(name="午餐", value=lunch_data[previous_lunch_id]["name"] + '->' + lunch_data[lunch_id]["name"], inline=False)
                             embed.add_embed_field(name="花費", value=f'{lunch_data[lunch_id]["price"]}元', inline=False)
                             embed.add_embed_field(name="餘額", value=f'{user_data[user_id]["wallet"]}元', inline=False)
+                            embed.add_embed_field(name="時間", value=current_time, inline=False)
                             # add embed object to webhook
                             webhook.add_embed(embed)
                             response = webhook.execute()
@@ -383,14 +381,18 @@ def process_orders(orders):
                 webhook.add_embed(embed)
                 response = webhook.execute()
 
-def start_scheduler():
-    # Schedule the count_lunch_items function to run daily at 4:00 PM
-    schedule.every().day.at("16:00").do(count_lunch_items)
+def auto_count_lunch():
+    webhook = DiscordWebhook(url=setting['webhook_link'], username=setting['webhook_name'])
+    embed = DiscordEmbed(title="午餐統計", color=0x03b2f8)
+    for count, lunch_name in count_lunch_items():
+        embed.add_embed_field(name=lunch_name, value=str(count), inline=False)
+    # add embed object to webhook
+    webhook.add_embed(embed)
+    response = webhook.execute()
 
-    # Run the scheduled tasks
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+# 指定時區（一定要指定，否則會失敗）
+scheduler = BackgroundScheduler(timezone="Asia/Taipei")
+scheduler.add_job(auto_count_lunch, 'cron', day_of_week='0-4', hour=17, minute=00)
 
 async def start_timer():
     while True:
@@ -400,5 +402,5 @@ async def start_timer():
         await asyncio.sleep(600)  # 等待 600 秒（10 分鐘）
 
 if __name__ == "__main__":
+    scheduler.start()
     bot.run(setting['bot_token'])
-    start_scheduler()
