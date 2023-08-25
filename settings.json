@@ -3,5 +3,6 @@
     "bot_token": "your token",
     "webhook_link": "webhook_link",
     "webhook_name": "我要吃午餐",
+    "form_link": "",
     "previous_data": ""
 }

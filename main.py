@@ -179,6 +179,13 @@ async def count_lunch(ctx):
     await ctx.send('已統計完成')
 
 @bot.command()
+@commands.is_owner()
+async def form_link(ctx, link):
+    setting['form_link'] = link
+    with open('settings.json', 'w', encoding='utf-8') as settings:
+        json.dump(setting, settings, ensure_ascii=False, indent=4)
+
+@bot.command()
 async def load_info(ctx, user_id: int):
     user_id_str = str(user_id)
     if user_id_str in user_data:
@@ -212,6 +219,10 @@ async def load_all_info(ctx):
         await ctx.send(embed=embed)
     else:
         await ctx.send("目前沒有用戶點餐信息")
+
+@bot.command()
+async def form_link(ctx):
+    await ctx.send(setting['form_link'])
 
 def load_sheet():
     # 認證+讀取google sheet
